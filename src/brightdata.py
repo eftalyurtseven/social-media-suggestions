@@ -8,7 +8,7 @@ from typing import Any
 import httpx
 
 from .config import Settings
-from .models import Influencer, Post, linkedin_post_from_record, x_post_from_record
+from .models import Influencer, Post, linkedin_post_from_record, x_post_from_entry
 
 log = logging.getLogger(__name__)
 
@@ -129,34 +129,39 @@ async def _run_snapshot(
 
 
 def _match_influencer(
-    record: dict,
+    *,
+    candidate_urls: list[str],
+    candidate_handles: list[str],
     influencers: list[Influencer],
-    url_keys: tuple[str, ...],
-    handle_key: str,
     platform: str,
 ) -> Influencer | None:
-    url = ""
-    for key in url_keys:
-        if record.get(key):
-            url = str(record[key])
-            break
-    url = url.lower().rstrip("/")
-    if platform == "x":
-        url = url.replace("://twitter.com/", "://x.com/")
+    normalized_urls: list[str] = []
+    for raw in candidate_urls:
+        if not raw:
+            continue
+        s = str(raw).lower().rstrip("/")
+        if platform == "x":
+            s = s.replace("://twitter.com/", "://x.com/").replace("://mobile.x.com/", "://x.com/")
+        normalized_urls.append(s)
 
     for inf in influencers:
         target = inf.linkedin_url if platform == "linkedin" else inf.x_url
         if not target:
             continue
         target_lc = target.lower().rstrip("/")
-        if url and (url == target_lc or target_lc in url or url in target_lc):
-            return inf
+        for u in normalized_urls:
+            if u == target_lc or target_lc in u or u in target_lc:
+                return inf
 
-    handle = (record.get(handle_key) or "").strip().lstrip("@").lower()
-    if handle:
+    for handle in candidate_handles:
+        if not handle:
+            continue
+        h = str(handle).strip().lstrip("@").lower()
+        if not h:
+            continue
         for inf in influencers:
             target = inf.linkedin_url if platform == "linkedin" else inf.x_url
-            if target and handle in target.lower():
+            if target and f"/{h}" in target.lower():
                 return inf
     return None
 
@@ -218,13 +223,17 @@ async def fetch_recent_posts(
     posts: list[Post] = []
 
     for record in linkedin_records:
-        if not isinstance(record, dict):
+        if not isinstance(record, dict) or record.get("error"):
             continue
+        discovery = record.get("discovery_input") or {}
         inf = _match_influencer(
-            record,
-            influencers,
-            url_keys=("input_url", "profile_url", "user_url", "author_url", "url"),
-            handle_key="user_name",
+            candidate_urls=[
+                discovery.get("url") if isinstance(discovery, dict) else None,
+                record.get("use_url"),
+                record.get("user_url"),
+            ],
+            candidate_handles=[record.get("user_id"), record.get("user_name")],
+            influencers=influencers,
             platform="linkedin",
         )
         if inf is None:
@@ -234,19 +243,21 @@ async def fetch_recent_posts(
             posts.append(post)
 
     for record in x_records:
-        if not isinstance(record, dict):
+        if not isinstance(record, dict) or record.get("error"):
             continue
         inf = _match_influencer(
-            record,
-            influencers,
-            url_keys=("input_url", "profile_url", "user_url", "url"),
-            handle_key="user_posted",
+            candidate_urls=[record.get("url"), record.get("profile_url")],
+            candidate_handles=[record.get("id"), record.get("profile_name")],
+            influencers=influencers,
             platform="x",
         )
         if inf is None:
             continue
-        post = x_post_from_record(record, inf)
-        if post and post.posted_at >= cutoff:
-            posts.append(post)
+        for entry in record.get("posts") or []:
+            if not isinstance(entry, dict):
+                continue
+            post = x_post_from_entry(entry, inf)
+            if post and post.posted_at >= cutoff:
+                posts.append(post)
 
     return posts, errors

@@ -78,7 +78,7 @@ def _first(record: dict, *keys: str) -> Any:
 
 def linkedin_post_from_record(record: dict, influencer: Influencer) -> Post | None:
     posted_at = _to_datetime(_first(record, "date_posted", "posted_at", "postedAt", "date"))
-    url = _first(record, "post_url", "url", "link")
+    url = _first(record, "url", "post_url", "link")
     text = _first(record, "post_text", "description", "text", "content") or ""
     if posted_at is None or not url:
         return None
@@ -95,10 +95,11 @@ def linkedin_post_from_record(record: dict, influencer: Influencer) -> Post | No
     )
 
 
-def x_post_from_record(record: dict, influencer: Influencer) -> Post | None:
-    posted_at = _to_datetime(_first(record, "date_posted", "created_at", "posted_at"))
-    url = _first(record, "url", "post_url", "tweet_url")
-    text = _first(record, "description", "text", "tweet_text", "content") or ""
+def x_post_from_entry(entry: dict, influencer: Influencer) -> Post | None:
+    """Normalize a single tweet entry from inside a profile record's ``posts`` array."""
+    posted_at = _to_datetime(_first(entry, "date_posted", "created_at", "posted_at"))
+    url = _first(entry, "post_url", "url", "tweet_url")
+    text = _first(entry, "description", "text", "tweet_text", "content") or ""
     if posted_at is None or not url:
         return None
     return Post(
@@ -108,7 +109,7 @@ def x_post_from_record(record: dict, influencer: Influencer) -> Post | None:
         url=str(url),
         text=str(text),
         posted_at=posted_at,
-        likes=_to_int(_first(record, "likes", "favorite_count", "num_likes")),
-        comments=_to_int(_first(record, "replies", "reply_count", "num_replies", "comments")),
-        reposts=_to_int(_first(record, "reposts", "retweets", "retweet_count", "num_reposts")),
+        likes=_to_int(_first(entry, "likes", "favorite_count", "num_likes")),
+        comments=_to_int(_first(entry, "replies", "reply_count", "num_replies", "comments")),
+        reposts=_to_int(_first(entry, "reposts", "retweets", "retweet_count", "num_reposts")),
     )
