@@ -27,11 +27,14 @@ async def _trigger(
     api_key: str,
     dataset_id: str,
     inputs: list[dict],
+    extra_params: dict | None = None,
 ) -> str:
     params = {
         "dataset_id": dataset_id,
         "include_errors": "true",
     }
+    if extra_params:
+        params.update(extra_params)
     headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
     last_exc: Exception | None = None
     for attempt in range(1, TRIGGER_MAX_RETRIES + 1):
@@ -116,10 +119,11 @@ async def _run_snapshot(
     api_key: str,
     dataset_id: str,
     inputs: list[dict],
+    extra_params: dict | None = None,
 ) -> list[dict]:
     if not inputs:
         return []
-    snapshot_id = await _trigger(client, api_key, dataset_id, inputs)
+    snapshot_id = await _trigger(client, api_key, dataset_id, inputs, extra_params)
     await _poll_until_ready(client, api_key, snapshot_id)
     return await _fetch_snapshot(client, api_key, snapshot_id)
 
@@ -180,6 +184,7 @@ async def fetch_recent_posts(
                 settings.brightdata_api_key,
                 settings.brightdata_linkedin_dataset_id,
                 linkedin_inputs,
+                extra_params={"type": "discover_new", "discover_by": "profile_url"},
             )
         )
         x_task = asyncio.create_task(
