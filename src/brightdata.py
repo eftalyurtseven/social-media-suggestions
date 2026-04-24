@@ -165,18 +165,11 @@ async def fetch_recent_posts(
     posts_per_profile: int = 10,
 ) -> tuple[list[Post], list[str]]:
     cutoff = datetime.now(timezone.utc) - timedelta(hours=window_hours)
-    start_date = cutoff.strftime("%Y-%m-%dT%H:%M:%S.000Z")
 
     linkedin_inputs = [
-        {"url": inf.linkedin_url, "start_date": start_date, "num_of_posts": posts_per_profile}
-        for inf in influencers
-        if inf.linkedin_url
+        {"url": inf.linkedin_url} for inf in influencers if inf.linkedin_url
     ]
-    x_inputs = [
-        {"url": inf.x_url, "start_date": start_date, "num_of_posts": posts_per_profile}
-        for inf in influencers
-        if inf.x_url
-    ]
+    x_inputs = [{"url": inf.x_url} for inf in influencers if inf.x_url]
 
     errors: list[str] = []
 
