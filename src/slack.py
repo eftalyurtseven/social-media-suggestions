@@ -28,10 +28,15 @@ def _top_line(idx: int, post: Post) -> str:
     )
 
 
-def _top_section(posts: list[Post]) -> str:
+def _window_label(window_days: int) -> str:
+    return "24h" if window_days <= 1 else f"{window_days}d"
+
+
+def _top_section(posts: list[Post], window_days: int) -> str:
+    label = _window_label(window_days)
     if not posts:
-        return "*🔥 Top posts (24h)*\n_No posts in the last 24h._"
-    lines = ["*🔥 Top posts (24h)*"]
+        return f"*🔥 Top posts ({label})*\n_No posts in the last {label}._"
+    lines = [f"*🔥 Top posts ({label})*"]
     for idx, post in enumerate(posts[:5], start=1):
         lines.append(_top_line(idx, post))
     return "\n".join(lines)
@@ -62,15 +67,17 @@ def build_payloads(
     all_posts: list[Post],
     analysis: Analysis,
     errors: list[str],
+    window_days: int = 1,
 ) -> list[dict]:
-    header = f"*🚀 Founder Intel — {date.strftime('%a %b %d')}*"
+    label = _window_label(window_days)
+    header = f"*🚀 Founder Intel — {date.strftime('%a %b %d')} ({label})*"
     counts = f"_{len(all_posts)} posts · {len(top_posts)} ranked_"
     if errors:
         counts += "\n" + "\n".join(f":warning: {e[:120]}" for e in errors[:2])
 
     sections = [
         f"{header}\n{counts}",
-        _top_section(top_posts),
+        _top_section(top_posts, window_days),
         analysis.patterns_markdown.strip(),
         analysis.drafts_markdown.strip(),
     ]

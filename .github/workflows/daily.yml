@@ -4,7 +4,12 @@ on:
   schedule:
     # 06:00 PST (UTC-8) = 14:00 UTC. During PDT (UTC-7) this fires at 07:00 local.
     - cron: "0 14 * * *"
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      days:
+        description: "Look-back window in days"
+        required: false
+        default: "1"
 
 jobs:
   digest:
@@ -17,7 +22,7 @@ jobs:
           python-version: "3.12"
           cache: pip
       - run: pip install -r requirements.txt
-      - run: python -m src.main
+      - run: python -m src.main --days ${{ inputs.days || '1' }}
         env:
           BRIGHTDATA_API_KEY: ${{ secrets.BRIGHTDATA_API_KEY }}
           BRIGHTDATA_LINKEDIN_DATASET_ID: ${{ secrets.BRIGHTDATA_LINKEDIN_DATASET_ID }}

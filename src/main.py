@@ -37,8 +37,9 @@ async def _run(args: argparse.Namespace) -> int:
 
     log.info("loaded %d influencers", len(influencers))
 
-    posts, errors = await fetch_recent_posts(settings, influencers)
-    log.info("fetched %d posts within 24h window; errors=%d", len(posts), len(errors))
+    window_hours = max(1, args.days) * 24
+    posts, errors = await fetch_recent_posts(settings, influencers, window_hours=window_hours)
+    log.info("fetched %d posts within %dd window; errors=%d", len(posts), args.days, len(errors))
 
     top = top_n(posts, n=10)
     analysis = generate_analysis(settings, top)
@@ -49,6 +50,7 @@ async def _run(args: argparse.Namespace) -> int:
         all_posts=posts,
         analysis=analysis,
         errors=errors,
+        window_days=args.days,
     )
 
     if args.dry_run:
@@ -74,6 +76,12 @@ def main() -> None:
     parser.add_argument(
         "--only",
         help="Fetch only the named influencer (for smoke tests)",
+    )
+    parser.add_argument(
+        "--days",
+        type=int,
+        default=1,
+        help="Look-back window in days (default 1)",
     )
     args = parser.parse_args()
     try:
