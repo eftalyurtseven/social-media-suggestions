@@ -25,7 +25,7 @@ def _setup_logging() -> None:
 
 
 async def _run(args: argparse.Namespace) -> int:
-    settings = Settings.from_env(require_slack=not args.dry_run)
+    settings = Settings.from_env(require_slack=not (args.dry_run or args.dump_posts))
     influencers = load_influencers()
 
     if args.only:
