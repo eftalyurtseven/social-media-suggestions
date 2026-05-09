@@ -19,7 +19,8 @@ jobs:
           python-version: "3.12"
           cache: pip
       - run: pip install -r requirements.txt
-      - run: python -m src.main --dry-run --days ${{ inputs.days }} | tee digest.txt
+      - name: Dump all posts as JSON
+        run: python -m src.main --dump-posts --days ${{ inputs.days }} > posts.json
         env:
           BRIGHTDATA_API_KEY: ${{ secrets.BRIGHTDATA_API_KEY }}
           BRIGHTDATA_LINKEDIN_DATASET_ID: ${{ secrets.BRIGHTDATA_LINKEDIN_DATASET_ID }}
@@ -27,5 +28,5 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       - uses: actions/upload-artifact@v4
         with:
-          name: digest
-          path: digest.txt
+          name: posts
+          path: posts.json

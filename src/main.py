@@ -41,6 +41,26 @@ async def _run(args: argparse.Namespace) -> int:
     posts, errors = await fetch_recent_posts(settings, influencers, window_hours=window_hours)
     log.info("fetched %d posts within %dd window; errors=%d", len(posts), args.days, len(errors))
 
+    if args.dump_posts:
+        sorted_posts = sorted(posts, key=lambda p: p.engagement, reverse=True)
+        dump = [
+            {
+                "author": p.author_name,
+                "company": p.author_company,
+                "platform": p.platform,
+                "url": p.url,
+                "posted_at": p.posted_at.isoformat(),
+                "likes": p.likes,
+                "comments": p.comments,
+                "reposts": p.reposts,
+                "engagement": p.engagement,
+                "text": p.text,
+            }
+            for p in sorted_posts
+        ]
+        print(json.dumps({"count": len(dump), "errors": errors, "posts": dump}, ensure_ascii=False, indent=2))
+        return 0
+
     top = top_n(posts, n=10)
     analysis = generate_analysis(settings, top)
 
@@ -82,6 +102,11 @@ def main() -> None:
         type=int,
         default=1,
         help="Look-back window in days (default 1)",
+    )
+    parser.add_argument(
+        "--dump-posts",
+        action="store_true",
+        help="Print all fetched posts as JSON and exit (no Claude, no Slack)",
     )
     args = parser.parse_args()
     try:
